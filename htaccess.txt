@@ -1,0 +1,148 @@
+# .htaccess — www.mmsmeridyen.tr
+# Bu dosyayı .htaccess olarak domain köküne yükleyin
+# ═══════════════════════════════════════════════════════════
+
+# ── HTTPS + www Yönlendirme ──────────────────────────────────
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # HTTP → HTTPS
+  RewriteCond %{HTTPS} off
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # non-www → www
+  RewriteCond %{HTTP_HOST} !^www\. [NC]
+  RewriteRule ^ https://www.%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # SPA: 404 → index.html (opsiyonel)
+  # RewriteCond %{REQUEST_FILENAME} !-f
+  # RewriteCond %{REQUEST_FILENAME} !-d
+  # RewriteRule ^ /index.html [L]
+</IfModule>
+
+# ── Sıkıştırma (Gzip) ───────────────────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE \
+    text/html text/plain text/xml text/css text/javascript \
+    application/javascript application/json application/xml \
+    application/manifest+json image/svg+xml font/woff2
+  DeflateCompressionLevel 9
+  BrowserMatch ^Mozilla/4 gzip-only-text/html
+  BrowserMatch ^Mozilla/4\.0[678] no-gzip
+  BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
+</IfModule>
+
+# ── Brotli (mod_brotli gerekir) ─────────────────────────────
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS \
+    text/html text/css application/javascript application/json \
+    application/manifest+json image/svg+xml font/woff2
+  BrotliCompressionQuality 6
+</IfModule>
+
+# ── Browser Cache ────────────────────────────────────────────
+<IfModule mod_expires.c>
+  ExpiresActive On
+  # HTML — cache yok (her zaman taze al)
+  ExpiresByType text/html                 "access plus 0 seconds"
+  # CSS / JS — 1 yıl (sürüm ile değişir)
+  ExpiresByType text/css                  "access plus 1 year"
+  ExpiresByType application/javascript    "access plus 1 year"
+  # Görseller — 1 ay
+  ExpiresByType image/jpeg                "access plus 1 month"
+  ExpiresByType image/png                 "access plus 1 month"
+  ExpiresByType image/webp                "access plus 1 month"
+  ExpiresByType image/svg+xml             "access plus 1 month"
+  ExpiresByType image/x-icon              "access plus 1 year"
+  # Fontlar — 1 yıl
+  ExpiresByType font/woff2                "access plus 1 year"
+  ExpiresByType font/woff                 "access plus 1 year"
+  # Manifest — 1 hafta
+  ExpiresByType application/manifest+json "access plus 1 week"
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Cache-Control
+  <FilesMatch "\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  <FilesMatch "\.(css|js|woff2|woff|ttf)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|ico)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+  <FilesMatch "\.(webmanifest|json)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+
+  # ── Güvenlik Headerları ──────────────────────────────────
+  Header always set Strict-Transport-Security \
+    "max-age=31536000; includeSubDomains; preload"
+
+  Header always set Content-Security-Policy \
+    "default-src 'self'; \
+     script-src 'self' 'unsafe-inline' \
+       https://www.googletagmanager.com \
+       https://www.clarity.ms \
+       https://connect.facebook.net; \
+     style-src 'self' 'unsafe-inline'; \
+     img-src 'self' data: https:; \
+     connect-src 'self' \
+       https://region1.analytics.google.com \
+       https://www.google-analytics.com \
+       https://www.clarity.ms; \
+     frame-src https://maps.google.com; \
+     form-action 'self'; \
+     base-uri 'self'; \
+     upgrade-insecure-requests"
+
+  Header always set X-Frame-Options            "SAMEORIGIN"
+  Header always set X-Content-Type-Options     "nosniff"
+  Header always set Referrer-Policy            "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy \
+    "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), interest-cohort=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set X-XSS-Protection          "1; mode=block"
+
+  # Server bilgisini gizle
+  Header always unset X-Powered-By
+  Header always unset Server
+
+  # MIME type
+  AddType application/manifest+json .webmanifest
+  AddType image/webp                .webp
+  AddType font/woff2                .woff2
+
+  # CORS — font için
+  <FilesMatch "\.(woff2|woff|ttf|eot)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>
+
+# ── 404 / Hata Sayfaları ─────────────────────────────────────
+ErrorDocument 404 /404.html
+ErrorDocument 403 /404.html
+ErrorDocument 500 /404.html
+
+# ── Directory Listing kapat ──────────────────────────────────
+Options -Indexes -MultiViews
+
+# ── ETag (CDN ile çakışmayı önle) ───────────────────────────
+FileETag None
+<IfModule mod_headers.c>
+  Header unset ETag
+</IfModule>
+
+# ── Service Worker scope ─────────────────────────────────────
+<Files "sw.js">
+  Header set Service-Worker-Allowed "/"
+  Header set Cache-Control "no-cache"
+</Files>
+
+# ── Manifest MIME ─────────────────────────────────────────────
+<Files "manifest.webmanifest">
+  Header set Content-Type "application/manifest+json"
+</Files>

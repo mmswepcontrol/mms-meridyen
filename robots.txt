@@ -1,0 +1,23 @@
+# robots.txt — www.mmsmeridyen.tr
+# Son güncelleme: 2026-06-27
+
+User-agent: *
+Allow: /
+Disallow: /private/
+Disallow: /admin/
+Disallow: /tmp/
+Disallow: /*.json$
+Crawl-delay: 1
+
+# Google
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+Sitemap: https://www.mmsmeridyen.tr/sitemap.xml
+Host: www.mmsmeridyen.tr
